@@ -1,0 +1,2387 @@
+// File: src/components/data-table.tsx
+"use client";
+import {
+  ColumnDef,
+  ColumnFiltersState,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingState,
+  VisibilityState,
+} from "@tanstack/table-core";
+import { flexRender, useReactTable } from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+}
+
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const router = useRouter();
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    onGlobalFilterChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    state: {
+      sorting,
+      globalFilter,
+      columnVisibility,
+    },
+  });
+
+  return (
+    <div>
+      <div className="flex justify-between py-4">
+        <Input
+          placeholder="Search..."
+          value={globalFilter ?? ""}
+          onChange={(event) => setGlobalFilter(event.target.value)}
+          className="max-w-sm"
+        />
+
+        <div className="flex justify-between">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="ml-auto">
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="pl-2.5">
+            <Button onClick={() => router.push("/employee")}>
+              Add Employee
+            </Button>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+
+                    <TableCell
+                      key={cell.id}
+                      onClick={() =>
+                          // @ts-ignore
+                        router.push(`/employee/${row.original?.id}`)
+                      }
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// File: src/components/employee/columns.tsx
+"use client"
+import { ColumnDef } from "@tanstack/table-core";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown } from "lucide-react";
+
+export type EmployeeColumns = {
+  id: number;
+  employeeNumber: number;
+  firstName: string;
+  lastName: string;
+  salutation: string;
+  profileColor: string;
+};
+
+export const EmployeeColumns: ColumnDef<EmployeeColumns>[] = [
+  {
+    accessorKey: "employeeNumber",
+    header: "Employee Number",
+  },
+  {
+    accessorKey: "firstName",
+    // header: "First Name",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          First Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+  },
+  {
+    accessorKey: "lastName",
+    header: "Last Name",
+  },
+  {
+    accessorKey: "salutation",
+    header: "Salutation",
+  },
+  {
+    accessorKey: "profileColor",
+    header: "Profile Color",
+  },
+];
+
+// File: src/components/employee/employee-form.tsx
+"use client";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Salutation } from "@/util/salutation";
+import { Check, ChevronsUpDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { colours } from "@/util/colours";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useCallback, useEffect, useState } from "react";
+import { CreateEmployee, UpdateEmployee } from "@/services/employee/employee";
+import { useRouter } from "next/navigation";
+import { Employee } from "@/types/employee.type";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+
+const FormSchema = z.object({
+  firstName: z
+    .string()
+    .min(2, {
+      message: "First Name must be at least 2 characters",
+    })
+    .regex(/^[a-zA-Z\s]*$/, {
+      message: "First Name must contain only alphabetic characters",
+    }),
+  lastName: z
+    .string()
+    .min(2, {
+      message: "Last Name must be at least 2 characters",
+    })
+    .regex(/^[a-zA-Z\s]*$/, {
+      message: "Last Name must contain only alphabetic characters",
+    }),
+  salutation: z
+    .string({
+      required_error: "Please select a salutation",
+    })
+    .min(1, "Please select a salutation"),
+  gender: z.enum(["MALE", "FEMALE", "UNSPECIFIED", "OTHER"], {
+    required_error: "You need to select a gender",
+  }),
+
+  employeeNumber: z
+    .union([z.string(), z.number()])
+    .refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+      message: "Employee number must be a non-negative number",
+    })
+    .transform((val) => Number(val)),
+  fullName: z.string().min(2, {
+    message: "Full Name must be at least 2 characters",
+  }),
+  grossSalaryPY: z
+    .union([z.string(), z.number()])
+    .refine((val) => !isNaN(Number(val.toString().replace(/\s/g, ""))), {
+      message: "Gross salary must be a valid number",
+    })
+    .transform((val) => Number(val.toString().replace(/\s/g, ""))),
+  profileColor: z.string({
+    required_error: "Please select a profile color",
+  }),
+});
+
+interface EmployeeFormProps {
+  employee?: Employee | undefined | null;
+}
+
+export function EmployeeForm({ employee }: EmployeeFormProps) {
+  const [selectedColor, setSelectedColor] = useState(
+    employee?.profileColor || colours[3].id,
+  );
+  const { toast } = useToast();
+  const router = useRouter();
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      firstName: employee?.firstName || "",
+      lastName: employee?.lastName || "",
+      salutation: employee?.salutation || "",
+      gender: employee?.gender || "UNSPECIFIED",
+      employeeNumber: employee?.employeeNumber,
+      fullName: employee?.fullName || "",
+      grossSalaryPY: employee?.grossSalaryPY,
+      profileColor: employee?.profileColor || colours[3].id,
+    },
+  });
+
+  const formatNumber = (value: string) => {
+    // Remove non-digit characters and leading zeros
+    const number = value.replace(/\D/g, "").replace(/^0+/, "");
+    // Add space separator for thousands
+    return number.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
+
+  const handleAlphabeticInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+    return value;
+  };
+
+  const firstName = form.watch("firstName");
+  const lastName = form.watch("lastName");
+  const salutation = form.watch("salutation");
+
+  const handleSalutationSelect = useCallback(
+    (selectedSalutation: string) => {
+      let gender: "MALE" | "FEMALE" | "UNSPECIFIED";
+      switch (selectedSalutation) {
+        case "Mr":
+          gender = "MALE";
+          break;
+        case "Mrs":
+        case "Ms":
+          gender = "FEMALE";
+          break;
+        case "Mx":
+          gender = "UNSPECIFIED";
+          break;
+        case "Dr":
+        default:
+          gender = "UNSPECIFIED";
+      }
+      form.setValue("salutation", selectedSalutation, { shouldValidate: true });
+      form.setValue("gender", gender, { shouldValidate: true });
+    },
+    [form],
+  );
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "profileColor") {
+        setSelectedColor(value.profileColor as string);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch, employee]);
+
+  useEffect(() => {
+    if (salutation) {
+      handleSalutationSelect(salutation);
+    }
+  }, [salutation, handleSalutationSelect]);
+
+  useEffect(() => {
+    const fullName = `${firstName} ${lastName}`.trim();
+    form.setValue("fullName", fullName);
+  }, [firstName, lastName, form]);
+
+  async function onSubmit(data: z.infer<typeof FormSchema>) {
+    try {
+      if (employee) {
+        await UpdateEmployee(employee.id.toString(), data);
+        toast({
+          title: "Success",
+          description: `${data.fullName} successfully updated.`,
+        });
+      } else {
+        await CreateEmployee(data);
+        toast({
+          title: "Success",
+          description: `${data.fullName} successfully added.`,
+        });
+      }
+
+      router.replace("/");
+      router.refresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "There was a problem with your request.",
+        action: <ToastAction altText="Try again">Try again</ToastAction>,
+      });
+    }
+  }
+
+  return (
+    <div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="flex justify-end w-full">
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={() => router.push("/")}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className={cn(
+                  "text-white",
+                  selectedColor === "RED" && "bg-red-500 hover:bg-red-600",
+                  selectedColor === "GREEN" &&
+                    "bg-green-500 hover:bg-green-600",
+                  selectedColor === "BLUE" && "bg-blue-500 hover:bg-blue-600",
+                  selectedColor === "YELLOW" &&
+                    "bg-yellow-500 hover:bg-yellow-600",
+                  selectedColor === "PURPLE" &&
+                    "bg-purple-500 hover:bg-purple-600",
+                  selectedColor === "DEFAULT" &&
+                    "bg-gray-500 hover:bg-gray-600",
+                )}
+              >
+                {employee ? "Update" : "Save"}
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-7">
+            <div>
+              <FormField
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      First Name(s)*
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="w-1/2"
+                        placeholder="Jarad..."
+                        {...field}
+                        onChange={(e) => {
+                          const value = handleAlphabeticInput(e);
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+                name="firstName"
+              />
+            </div>
+
+            <div>
+              <FormField
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      Full Name
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="w-1/2"
+                        placeholder="Jarad Tryffin..."
+                        {...field}
+                        disabled
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+                name="fullName"
+              />
+            </div>
+
+            <div>
+              <FormField
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      Last Name*
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="w-1/2"
+                        placeholder="Jarad..."
+                        {...field}
+                        onChange={(e) => {
+                          const value = handleAlphabeticInput(e);
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+                name="lastName"
+              />
+            </div>
+
+            <div>
+              <FormField
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      Gross Salary $PY
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="w-1/2"
+                        placeholder="1 000 000"
+                        type="text"
+                        inputMode="numeric"
+                        {...field}
+                        value={
+                          field.value
+                            ? formatNumber(field.value.toString())
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const formatted = formatNumber(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+                name="grossSalaryPY"
+              />
+            </div>
+
+            <div>
+              <FormField
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      Salutation *
+                    </FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-1/2 justify-between",
+                              !field.value && "text-muted-foreground",
+                            )}
+                          >
+                            {field.value
+                              ? Salutation.find((s) => s.value == field.value)
+                                  ?.label
+                              : "Selection Salutation"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search Salutation..." />
+                          <CommandList>
+                            <CommandList>
+                              <CommandEmpty>No Salutation Found.</CommandEmpty>
+                              <CommandGroup>
+                                {Salutation.map((s) => (
+                                  <CommandItem
+                                    value={s.label}
+                                    key={s.value}
+                                    onSelect={() => field.onChange(s.value)}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        s.value === field.value
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    {s.label}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </FormItem>
+                )}
+                name="salutation"
+              />
+            </div>
+
+            <div>
+              <FormField
+                control={form.control}
+                name="profileColor"
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      Employee Profile Colour
+                    </FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex  space-y-1"
+                      >
+                        {colours.map((color) => (
+                          <FormItem
+                            className="flex items-center space-x-3 space-y-0"
+                            key={color.id}
+                          >
+                            <FormControl>
+                              <RadioGroupItem value={color.id} />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {color.label}
+                            </FormLabel>
+                          </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div>
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      Gender *
+                    </FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex  space-y-1"
+                      >
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="MALE" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Male</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="FEMALE" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Female</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="UNSPECIFIED" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Unspecified
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    {/*<FormMessage />*/}
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div></div>
+            <div>
+              <FormField
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex w-full">
+                    <FormLabel className="w-1/2 flex items-center">
+                      Employee # *
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="w-1/2"
+                        placeholder="123..."
+                        type="text" // Change to text type
+                        inputMode="numeric" // Suggests a numeric keyboard on mobile devices
+                        pattern="[0-9]*" // Only allows numeric input
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, ""); // Remove any non-numeric characters
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                    {/*<FormMessage />*/}
+                  </FormItem>
+                )}
+                name="employeeNumber"
+              />
+            </div>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+// File: src/components/heading.tsx
+interface HeadingProps {
+  title: string;
+  description: string;
+}
+
+export const Heading: React.FC<HeadingProps> = ({ title, description }) => {
+  return (
+    <div>
+      <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+};
+
+// File: src/components/ui/button.tsx
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+
+// File: src/components/ui/checkbox.tsx
+"use client"
+
+import * as React from "react"
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
+import { Check } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Checkbox = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <CheckboxPrimitive.Root
+    ref={ref}
+    className={cn(
+      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      className
+    )}
+    {...props}
+  >
+    <CheckboxPrimitive.Indicator
+      className={cn("flex items-center justify-center text-current")}
+    >
+      <Check className="h-4 w-4" />
+    </CheckboxPrimitive.Indicator>
+  </CheckboxPrimitive.Root>
+))
+Checkbox.displayName = CheckboxPrimitive.Root.displayName
+
+export { Checkbox }
+
+// File: src/components/ui/command.tsx
+"use client"
+
+import * as React from "react"
+import { type DialogProps } from "@radix-ui/react-dialog"
+import { Command as CommandPrimitive } from "cmdk"
+import { Search } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+
+const Command = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive
+    ref={ref}
+    className={cn(
+      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+Command.displayName = CommandPrimitive.displayName
+
+interface CommandDialogProps extends DialogProps {}
+
+const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+  return (
+    <Dialog {...props}>
+      <DialogContent className="overflow-hidden p-0 shadow-lg">
+        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+          {children}
+        </Command>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const CommandInput = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Input>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+>(({ className, ...props }, ref) => (
+  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <CommandPrimitive.Input
+      ref={ref}
+      className={cn(
+        "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  </div>
+))
+
+CommandInput.displayName = CommandPrimitive.Input.displayName
+
+const CommandList = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.List
+    ref={ref}
+    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    {...props}
+  />
+))
+
+CommandList.displayName = CommandPrimitive.List.displayName
+
+const CommandEmpty = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Empty>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
+>((props, ref) => (
+  <CommandPrimitive.Empty
+    ref={ref}
+    className="py-6 text-center text-sm"
+    {...props}
+  />
+))
+
+CommandEmpty.displayName = CommandPrimitive.Empty.displayName
+
+const CommandGroup = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Group>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Group
+    ref={ref}
+    className={cn(
+      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandGroup.displayName = CommandPrimitive.Group.displayName
+
+const CommandSeparator = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 h-px bg-border", className)}
+    {...props}
+  />
+))
+CommandSeparator.displayName = CommandPrimitive.Separator.displayName
+
+const CommandItem = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
+>(({ className, ...props }, ref) => (
+  <CommandPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected='true']:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50",
+      className
+    )}
+    {...props}
+  />
+))
+
+CommandItem.displayName = CommandPrimitive.Item.displayName
+
+const CommandShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn(
+        "ml-auto text-xs tracking-widest text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+CommandShortcut.displayName = "CommandShortcut"
+
+export {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+  CommandSeparator,
+}
+
+// File: src/components/ui/dialog.tsx
+"use client"
+
+import * as React from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Dialog = DialogPrimitive.Root
+
+const DialogTrigger = DialogPrimitive.Trigger
+
+const DialogPortal = DialogPrimitive.Portal
+
+const DialogClose = DialogPrimitive.Close
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+  />
+))
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+DialogContent.displayName = DialogPrimitive.Content.displayName
+
+const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-1.5 text-center sm:text-left",
+      className
+    )}
+    {...props}
+  />
+)
+DialogHeader.displayName = "DialogHeader"
+
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    )}
+    {...props}
+  />
+)
+DialogFooter.displayName = "DialogFooter"
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+DialogTitle.displayName = DialogPrimitive.Title.displayName
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+}
+
+// File: src/components/ui/dropdown-menu.tsx
+"use client"
+
+import * as React from "react"
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { Check, ChevronRight, Circle } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const DropdownMenu = DropdownMenuPrimitive.Root
+
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+
+const DropdownMenuGroup = DropdownMenuPrimitive.Group
+
+const DropdownMenuPortal = DropdownMenuPrimitive.Portal
+
+const DropdownMenuSub = DropdownMenuPrimitive.Sub
+
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
+
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+    inset?: boolean
+  }
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(
+      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto h-4 w-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+))
+DropdownMenuSubTrigger.displayName =
+  DropdownMenuPrimitive.SubTrigger.displayName
+
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubContent
+    ref={ref}
+    className={cn(
+      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuSubContent.displayName =
+  DropdownMenuPrimitive.SubContent.displayName
+
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+))
+DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
+
+const DropdownMenuItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
+
+const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+>(({ className, children, checked, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    checked={checked}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+))
+DropdownMenuCheckboxItem.displayName =
+  DropdownMenuPrimitive.CheckboxItem.displayName
+
+const DropdownMenuRadioItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+>(({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    )}
+    {...props}
+  >
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Circle className="h-2 w-2 fill-current" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+))
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
+
+const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    className={cn(
+      "px-2 py-1.5 text-sm font-semibold",
+      inset && "pl-8",
+      className
+    )}
+    {...props}
+  />
+))
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
+
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    {...props}
+  />
+))
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
+
+const DropdownMenuShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+      {...props}
+    />
+  )
+}
+DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+}
+
+// File: src/components/ui/form.tsx
+"use client"
+
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { Slot } from "@radix-ui/react-slot"
+import {
+  Controller,
+  ControllerProps,
+  FieldPath,
+  FieldValues,
+  FormProvider,
+  useFormContext,
+} from "react-hook-form"
+
+import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
+
+const Form = FormProvider
+
+type FormFieldContextValue<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> = {
+  name: TName
+}
+
+const FormFieldContext = React.createContext<FormFieldContextValue>(
+  {} as FormFieldContextValue
+)
+
+const FormField = <
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>({
+  ...props
+}: ControllerProps<TFieldValues, TName>) => {
+  return (
+    <FormFieldContext.Provider value={{ name: props.name }}>
+      <Controller {...props} />
+    </FormFieldContext.Provider>
+  )
+}
+
+const useFormField = () => {
+  const fieldContext = React.useContext(FormFieldContext)
+  const itemContext = React.useContext(FormItemContext)
+  const { getFieldState, formState } = useFormContext()
+
+  const fieldState = getFieldState(fieldContext.name, formState)
+
+  if (!fieldContext) {
+    throw new Error("useFormField should be used within <FormField>")
+  }
+
+  const { id } = itemContext
+
+  return {
+    id,
+    name: fieldContext.name,
+    formItemId: `${id}-form-item`,
+    formDescriptionId: `${id}-form-item-description`,
+    formMessageId: `${id}-form-item-message`,
+    ...fieldState,
+  }
+}
+
+type FormItemContextValue = {
+  id: string
+}
+
+const FormItemContext = React.createContext<FormItemContextValue>(
+  {} as FormItemContextValue
+)
+
+const FormItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const id = React.useId()
+
+  return (
+    <FormItemContext.Provider value={{ id }}>
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+    </FormItemContext.Provider>
+  )
+})
+FormItem.displayName = "FormItem"
+
+const FormLabel = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  const { error, formItemId } = useFormField()
+
+  return (
+    <Label
+      ref={ref}
+      className={cn(error && "text-destructive", className)}
+      htmlFor={formItemId}
+      {...props}
+    />
+  )
+})
+FormLabel.displayName = "FormLabel"
+
+const FormControl = React.forwardRef<
+  React.ElementRef<typeof Slot>,
+  React.ComponentPropsWithoutRef<typeof Slot>
+>(({ ...props }, ref) => {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+
+  return (
+    <Slot
+      ref={ref}
+      id={formItemId}
+      aria-describedby={
+        !error
+          ? `${formDescriptionId}`
+          : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...props}
+    />
+  )
+})
+FormControl.displayName = "FormControl"
+
+const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { formDescriptionId } = useFormField()
+
+  return (
+    <p
+      ref={ref}
+      id={formDescriptionId}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+})
+FormDescription.displayName = "FormDescription"
+
+const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, children, ...props }, ref) => {
+  const { error, formMessageId } = useFormField()
+  const body = error ? String(error?.message) : children
+
+  if (!body) {
+    return null
+  }
+
+  return (
+    <p
+      ref={ref}
+      id={formMessageId}
+      className={cn("text-sm font-medium text-destructive", className)}
+      {...props}
+    >
+      {body}
+    </p>
+  )
+})
+FormMessage.displayName = "FormMessage"
+
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+}
+
+// File: src/components/ui/input.tsx
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
+
+export { Input }
+
+// File: src/components/ui/label.tsx
+"use client"
+
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const labelVariants = cva(
+  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+)
+
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
+    VariantProps<typeof labelVariants>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={cn(labelVariants(), className)}
+    {...props}
+  />
+))
+Label.displayName = LabelPrimitive.Root.displayName
+
+export { Label }
+
+// File: src/components/ui/popover.tsx
+"use client"
+
+import * as React from "react"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
+
+import { cn } from "@/lib/utils"
+
+const Popover = PopoverPrimitive.Root
+
+const PopoverTrigger = PopoverPrimitive.Trigger
+
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+>(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+))
+PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+export { Popover, PopoverTrigger, PopoverContent }
+
+// File: src/components/ui/radio-group.tsx
+"use client"
+
+import * as React from "react"
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
+import { Circle } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const RadioGroup = React.forwardRef<
+  React.ElementRef<typeof RadioGroupPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  return (
+    <RadioGroupPrimitive.Root
+      className={cn("grid gap-2", className)}
+      {...props}
+      ref={ref}
+    />
+  )
+})
+RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
+
+const RadioGroupItem = React.forwardRef<
+  React.ElementRef<typeof RadioGroupPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
+>(({ className, ...props }, ref) => {
+  return (
+    <RadioGroupPrimitive.Item
+      ref={ref}
+      className={cn(
+        "aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    >
+      <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
+        <Circle className="h-2.5 w-2.5 fill-current text-current" />
+      </RadioGroupPrimitive.Indicator>
+    </RadioGroupPrimitive.Item>
+  )
+})
+RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName
+
+export { RadioGroup, RadioGroupItem }
+
+// File: src/components/ui/table.tsx
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+const Table = React.forwardRef<
+  HTMLTableElement,
+  React.HTMLAttributes<HTMLTableElement>
+>(({ className, ...props }, ref) => (
+  <div className="relative w-full overflow-auto">
+    <table
+      ref={ref}
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props}
+    />
+  </div>
+))
+Table.displayName = "Table"
+
+const TableHeader = React.forwardRef<
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+))
+TableHeader.displayName = "TableHeader"
+
+const TableBody = React.forwardRef<
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <tbody
+    ref={ref}
+    className={cn("[&_tr:last-child]:border-0", className)}
+    {...props}
+  />
+))
+TableBody.displayName = "TableBody"
+
+const TableFooter = React.forwardRef<
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <tfoot
+    ref={ref}
+    className={cn(
+      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      className
+    )}
+    {...props}
+  />
+))
+TableFooter.displayName = "TableFooter"
+
+const TableRow = React.forwardRef<
+  HTMLTableRowElement,
+  React.HTMLAttributes<HTMLTableRowElement>
+>(({ className, ...props }, ref) => (
+  <tr
+    ref={ref}
+    className={cn(
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+TableRow.displayName = "TableRow"
+
+const TableHead = React.forwardRef<
+  HTMLTableCellElement,
+  React.ThHTMLAttributes<HTMLTableCellElement>
+>(({ className, ...props }, ref) => (
+  <th
+    ref={ref}
+    className={cn(
+      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      className
+    )}
+    {...props}
+  />
+))
+TableHead.displayName = "TableHead"
+
+const TableCell = React.forwardRef<
+  HTMLTableCellElement,
+  React.TdHTMLAttributes<HTMLTableCellElement>
+>(({ className, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    {...props}
+  />
+))
+TableCell.displayName = "TableCell"
+
+const TableCaption = React.forwardRef<
+  HTMLTableCaptionElement,
+  React.HTMLAttributes<HTMLTableCaptionElement>
+>(({ className, ...props }, ref) => (
+  <caption
+    ref={ref}
+    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+TableCaption.displayName = "TableCaption"
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+}
+
+// File: src/components/ui/toast.tsx
+"use client"
+
+import * as React from "react"
+import * as ToastPrimitives from "@radix-ui/react-toast"
+import { cva, type VariantProps } from "class-variance-authority"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const ToastProvider = ToastPrimitives.Provider
+
+const ToastViewport = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Viewport>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Viewport
+    ref={ref}
+    className={cn(
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      className
+    )}
+    {...props}
+  />
+))
+ToastViewport.displayName = ToastPrimitives.Viewport.displayName
+
+const toastVariants = cva(
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  {
+    variants: {
+      variant: {
+        default: "border bg-background text-foreground",
+        destructive:
+          "destructive group border-destructive bg-destructive text-destructive-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+const Toast = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Root>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
+    VariantProps<typeof toastVariants>
+>(({ className, variant, ...props }, ref) => {
+  return (
+    <ToastPrimitives.Root
+      ref={ref}
+      className={cn(toastVariants({ variant }), className)}
+      {...props}
+    />
+  )
+})
+Toast.displayName = ToastPrimitives.Root.displayName
+
+const ToastAction = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Action>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Action
+    ref={ref}
+    className={cn(
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      className
+    )}
+    {...props}
+  />
+))
+ToastAction.displayName = ToastPrimitives.Action.displayName
+
+const ToastClose = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Close>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Close
+    ref={ref}
+    className={cn(
+      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      className
+    )}
+    toast-close=""
+    {...props}
+  >
+    <X className="h-4 w-4" />
+  </ToastPrimitives.Close>
+))
+ToastClose.displayName = ToastPrimitives.Close.displayName
+
+const ToastTitle = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Title>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Title
+    ref={ref}
+    className={cn("text-sm font-semibold", className)}
+    {...props}
+  />
+))
+ToastTitle.displayName = ToastPrimitives.Title.displayName
+
+const ToastDescription = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Description>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Description
+    ref={ref}
+    className={cn("text-sm opacity-90", className)}
+    {...props}
+  />
+))
+ToastDescription.displayName = ToastPrimitives.Description.displayName
+
+type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
+
+type ToastActionElement = React.ReactElement<typeof ToastAction>
+
+export {
+  type ToastProps,
+  type ToastActionElement,
+  ToastProvider,
+  ToastViewport,
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastAction,
+}
+
+// File: src/components/ui/toaster.tsx
+"use client"
+
+import { useToast } from "@/hooks/use-toast";
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from "@/components/ui/toast"
+
+export function Toaster() {
+  const { toasts } = useToast()
+
+  return (
+    <ToastProvider>
+      {toasts.map(function ({ id, title, description, action, ...props }) {
+        return (
+          <Toast key={id} {...props}>
+            <div className="grid gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && (
+                <ToastDescription>{description}</ToastDescription>
+              )}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        )
+      })}
+      <ToastViewport />
+    </ToastProvider>
+  )
+}
+
+// File: src/app/employee/[id]/page.tsx
+import { GetEmployee } from "@/services/employee/employee";
+import {Heading} from "@/components/heading";
+import {EmployeeForm} from "@/components/employee/employee-form";
+
+export default async function EmployeeDetailpAGE({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const employee = await GetEmployee(params.id);
+
+  return (
+      <div className="m-5">
+          <div className="mb-5">
+              <Heading title="Employee" description="Edit Employee"/>
+          </div>
+
+          <div>
+              <EmployeeForm employee={employee}/>
+          </div>
+      </div>
+  )
+}
+
+// File: src/app/employee/page.tsx
+import { Heading } from "@/components/heading";
+import { EmployeeForm } from "@/components/employee/employee-form";
+
+export default function Employee() {
+  return (
+    <div className="m-5">
+      <div className="mb-5">
+        <Heading title="Employee" description="Add/Edit Employee" />
+      </div>
+
+      <div>
+        <EmployeeForm />
+      </div>
+    </div>
+  );
+}
+
+// File: src/app/globals.css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+// File: src/app/layout.tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/toaster";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <main>{children}</main>
+        <Toaster />
+      </body>
+    </html>
+  );
+}
+
+// File: src/app/page.tsx
+
+import { GetAllEmployees } from "@/services/employee/employee";
+import { Heading } from "@/components/heading";
+import { DataTable } from "@/components/data-table";
+import { EmployeeColumns } from "@/components/employee/columns";
+
+export default async function Home() {
+  const employees = await GetAllEmployees();
+
+  const formattedString = (value: string): string => {
+    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+  };
+
+  const employeeColumnMatch = (): EmployeeColumns[] => {
+    return employees.map((employee) => {
+      return {
+        id: employee.id,
+        employeeNumber: employee.employeeNumber,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        salutation: formattedString(employee.salutation),
+        profileColor: formattedString(employee.profileColor),
+      };
+    });
+  };
+
+  const matchedEmployees = employeeColumnMatch();
+  return (
+    <div className="m-5">
+      <div className="mb-5">
+        <Heading title="Employees" description="Manage Employees" />
+      </div>
+      <div>
+        <DataTable columns={EmployeeColumns} data={matchedEmployees} />
+      </div>
+    </div>
+  );
+}
+
+// File: src/hooks/use-toast.ts
+"use client"
+
+// Inspired by react-hot-toast library
+import * as React from "react"
+
+import type {
+  ToastActionElement,
+  ToastProps,
+} from "@/components/ui/toast"
+
+const TOAST_LIMIT = 1
+const TOAST_REMOVE_DELAY = 1000000
+
+type ToasterToast = ToastProps & {
+  id: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+}
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const
+
+let count = 0
+
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER
+  return count.toString()
+}
+
+type ActionType = typeof actionTypes
+
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"]
+      toast: ToasterToast
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"]
+      toast: Partial<ToasterToast>
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+
+interface State {
+  toasts: ToasterToast[]
+}
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId: toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "ADD_TOAST":
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      }
+
+    case "UPDATE_TOAST":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
+      }
+
+    case "DISMISS_TOAST": {
+      const { toastId } = action
+
+      // ! Side effects ! - This could be extracted into a dismissToast() action,
+      // but I'll keep it here for simplicity
+      if (toastId) {
+        addToRemoveQueue(toastId)
+      } else {
+        state.toasts.forEach((toast) => {
+          addToRemoveQueue(toast.id)
+        })
+      }
+
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t
+        ),
+      }
+    }
+    case "REMOVE_TOAST":
+      if (action.toastId === undefined) {
+        return {
+          ...state,
+          toasts: [],
+        }
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      }
+  }
+}
+
+const listeners: Array<(state: State) => void> = []
+
+let memoryState: State = { toasts: [] }
+
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action)
+  listeners.forEach((listener) => {
+    listener(memoryState)
+  })
+}
+
+type Toast = Omit<ToasterToast, "id">
+
+function toast({ ...props }: Toast) {
+  const id = genId()
+
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: "UPDATE_TOAST",
+      toast: { ...props, id },
+    })
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+
+  dispatch({
+    type: "ADD_TOAST",
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss()
+      },
+    },
+  })
+
+  return {
+    id: id,
+    dismiss,
+    update,
+  }
+}
+
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState)
+
+  React.useEffect(() => {
+    listeners.push(setState)
+    return () => {
+      const index = listeners.indexOf(setState)
+      if (index > -1) {
+        listeners.splice(index, 1)
+      }
+    }
+  }, [state])
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  }
+}
+
+export { useToast, toast }
+
+// File: src/services/employee/employee.ts
+import { Employee, EmployeeCreate } from "@/types/employee.type";
+import apiClient from "@/lib/apiClient";
+
+export const GetAllEmployees = async (): Promise<Employee[]> => {
+  try {
+    const response = await apiClient.get("/employees");
+    return response.data;
+  } catch (error) {
+    console.log("Error fetching employees");
+    return [];
+  }
+};
+
+export const GetEmployee = async (id: string): Promise<Employee | null> => {
+  try {
+    const response = await apiClient.get(`/employees/${id}`);
+    return response.data;
+  } catch (error) {
+    console.log("Error fetching employees");
+    return null;
+  }
+};
+
+export const CreateEmployee = async (
+  data: EmployeeCreate,
+): Promise<Employee | null> => {
+  try {
+    const response = await apiClient.post("/employees", data);
+    return response.data;
+  } catch (error) {
+    console.log("Error creating employee");
+    return null;
+  }
+};
+
+export const UpdateEmployee = async (
+  id: string,
+  data: EmployeeCreate,
+): Promise<Employee | null> => {
+  try {
+    const response = await apiClient.patch(`/employees/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.log("Error updating employee");
+    return null;
+  }
+};
+
+// File: src/types/employee.type.ts
+export interface Employee {
+  id: number;
+  employeeNumber: number;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  gender: "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED";
+  salutation: "MR" | "MRS" | "MS" | "DR" | "MX";
+  grossSalaryPY: number;
+  profileColor: "BLUE" | "RED" | "GREEN" | "DEFAULT";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeCreate {
+  id?: number;
+  employeeNumber: number;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  gender: string;
+  salutation: string;
+  grossSalaryPY: number;
+  profileColor: string;
+}
+
